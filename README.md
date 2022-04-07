@@ -12,5 +12,5 @@
 
 ### 2º Semestre
 
-- [Perfil de Engenharia de Aplicações]()
-- [Perfil de Sistemas Inteligentes]()
+- [Perfil de Engenharia de Aplicações](https://github.com/chelesgaroth/MEI-Uminho/tree/main/1oAno/2oSemestre/Perfil_EA)
+- [Perfil de Sistemas Inteligentes](https://github.com/chelesgaroth/MEI-Uminho/tree/main/1oAno/2oSemestre/Perfil_SI)
