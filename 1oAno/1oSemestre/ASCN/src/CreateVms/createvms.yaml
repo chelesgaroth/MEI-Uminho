@@ -1,0 +1,90 @@
+- hosts: localhost
+  vars:
+    service_account_file: ascn-credentials.json
+    project: ascn-331508
+    auth_kind: serviceaccount
+    scopes:
+      - https://www.googleapis.com/auth/compute
+    zone: europe-west1-b
+    region: europe-west1
+    source_img: 'projects/confidential-vm-images/global/images/ubuntu-2004-focal-v20210927'
+    machine_type: e2-small
+  tasks:
+    - name: Create boot disks
+      gcp_compute_disk:
+        name: "disk-{{ item }}"
+        state: present
+        size_gb: 20
+        source_image: "{{ source_img }}"
+        zone: "{{ zone }}"
+        project: "{{ project }}"
+        auth_kind: "{{ auth_kind }}"
+        service_account_file: "{{ service_account_file }}"
+        scopes: "{{ scopes }}"
+      loop:
+        - mastervm
+      register: disks
+
+    - name: Create IP address
+      gcp_compute_address:
+        name: "address-{{ item }}"
+        project: "{{ project }}"
+        auth_kind: "{{ auth_kind }}"
+        service_account_file: "{{ service_account_file }}"
+        scopes: "{{ scopes }}"
+        region: "{{ region }}"
+        state: present
+      loop:
+        - mastervm
+      register: addresses
+
+    - name: Create an Instance
+      gcp_compute_instance:
+        state: present
+        name: "{{ item }}"
+        machine_type: "{{ machine_type }}"
+        labels:
+          role: "{{ item }}"
+        disks:
+          - auto_delete: true
+            boot: true
+            source: "{{ disks.results | selectattr('name', 'equalto', 'disk-' + item) | first }}"
+        network_interfaces:
+          - network: null
+            access_configs:
+              - name: 'External NAT'
+                nat_ip: "{{ addresses.results | selectattr('name', 'equalto', 'address-' + item) | first }}"
+                type: 'ONE_TO_ONE_NAT'
+        zone: "{{ zone }}"
+        project: "{{ project }}"
+        auth_kind: "{{ auth_kind }}"
+        service_account_file: "{{ service_account_file }}"
+        scopes: "{{ scopes }}"
+      loop:
+        - mastervm
+      register: instances
+
+    - name: Create a firewall
+      gcp_compute_firewall:
+        state: present
+        name: wikijs
+        allowed:
+          - ip_protocol: tcp
+            ports:
+              - '3000'
+        project: "{{ project }}"
+        auth_kind: "{{ auth_kind }}"
+        service_account_file: "{{ service_account_file }}"
+        scopes: "{{ scopes }}"
+
+    - name: Wait for SSH to come up
+      wait_for:
+        host: "{{ item.address }}"
+        port: 22
+        delay: 10
+        timeout: 60
+      loop: "{{ addresses.results }}"
+    
+    - name: Copy file from machine1 to machine2
+      shell: "scp -r ../WikijsK8 master@{{item.address}}:."
+      loop: "{{addresses.results}}"

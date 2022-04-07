@@ -1,0 +1,20 @@
+Pré-requisitos:
+	- Ter o ansible instalado (https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#installing-ansible-on-ubuntu)
+	- Ter a chave publica guardada nos metadados do projeto da google cloud com o username 'master'
+
+Passos para instalação:
+	1: Criar a vm master na google cloud
+		-> cd CreateVms
+		-> ansible-playbook createvms.yaml
+
+	2: Aceder a vm master por ssh (ver ip externo na consola da google cloud)
+		-> ssh master@<ip_mastervm>
+
+	3: Instalar bibliotecas adicionais do ansible
+		-> ansible-galaxy collection install cloud.common
+		-> ansible-galaxy collection install community.kubernetes
+		-> ansible-galaxy collection install kubernetes.core
+
+	4: Entrar na pasta WikijsK8 e instalar o WikijsK8 (incluindo a criacao de um cluster)
+		-> cd WikijsK8
+		-> ansible-playbook geral.yaml

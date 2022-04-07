@@ -1,0 +1,8 @@
+plugin: gcp_compute
+projects:
+  - ascn-331508
+auth_kind: serviceaccount
+service_account_file: ./ascn-credentials.json
+keyed_groups:
+  - key: labels
+    prefix: label

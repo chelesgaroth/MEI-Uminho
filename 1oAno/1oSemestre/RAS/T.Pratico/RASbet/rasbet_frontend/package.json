@@ -1,0 +1,25 @@
+{
+  "name": "rasbet_cli",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.25.0",
+    "cli-table": "^0.3.11",
+    "cli-table3": "^0.6.0",
+    "commander": "^8.3.0",
+    "enquirer": "^2.3.6",
+    "inquirer": "^8.2.0",
+    "inquirer-date-prompt": "^2.0.1",
+    "inquirer-datepicker-prompt": "^0.4.0",
+    "prompts": "^2.4.2",
+    "signale": "^1.4.0"
+  }
+}

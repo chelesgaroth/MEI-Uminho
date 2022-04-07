@@ -1,0 +1,52 @@
+sig Hash {}
+abstract sig Object {
+	hash : one Hash
+}
+
+sig Blob extends Object {}
+
+sig Name {}
+
+sig Tree extends Object {
+	objects : Hash -> Name
+}
+
+sig Commit extends Object {
+	tree : one Hash,
+	parent : set Hash
+}
+
+
+pred Invs {
+  
+  	// (1) Diferentes objetos de uma "tree" não podem ter o mesmo nome.
+  	all t: Tree, n1: Name, n2: Name, h1: Hash, h2: Hash | t->h1->n1 in objects and t->h2->n2 in objects and h1!=h2 implies n1!=n2
+  
+  	// (2) Cada "hash" corresponde a um e um só "object"
+ 	all h: Hash, o1: Object, o2: Object | o1->h in hash and o2->h in hash implies o1=o2
+
+  	// (3) Os "objects" de uma "tree" devem ser do tipo "tree" ou "blob".
+	// 3.2-O Commit, em tree aponta para uma hash de um objeto tipo tree.
+	// 3.3-O Commit em parent aponta para hashs de objetos tipo Commit
+  	/*	
+  	all t: Tree, h: Hash, n: Name, t1: Tree, b: Blob | t->h->n in objects implies t1->h in hash or b->h in hash
+	all c: Commit, h: Hash | some t: Tree | c->h in tree implies t->h in hash
+    all c: Commit, h: Hash | c->h in parent implies some c2: Commit | c2->h in hash
+    */
+
+  
+  	//4.1-Um Commit não pode estar contido nos seus parent
+	//4.2-Uma Tree nao pode estar contida nos seus objetos
+  	all c:Commit | c not in c.^(parent.~hash)
+	//all t : Tree | t not in t.^({t : Tree, h : Hash | some t.objects.h})
+  
+  
+  
+  
+  	//5.1-Se 2 Trees tem os mesmos objetos então são a mesma Tree 
+	//5.2-Se 2 Commit tem a mesma tree, e os mesmos parents então são o mesmo Commit
+  	all t1, t2 : Tree | t1.objects = t2.objects implies t1=t2
+  	all c1, c2 : Commit | (c1.tree = c2.tree) and (c1.parent = c2.parent) implies c1=c2
+  	
+
+}

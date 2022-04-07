@@ -1,0 +1,258 @@
+---
+
+- name: Create a k8s namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ namespace }}"
+
+- name: Create storage class
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: gold
+      provisioner: kubernetes.io/gce-pd
+      volumeBindingMode: Immediate
+      allowVolumeExpansion: true
+      reclaimPolicy: Delete
+      parameters:
+        type: pd-standard
+        fstype: ext4
+        replication-type: none
+
+- name: Create postgres service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: postgres
+        namespace: wikijs
+        labels:
+          app: postgres
+      spec:
+        ports:
+        - port: 5432
+          name: postgres-port
+        selector:
+          app: postgres
+
+- name: Create wikijs service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "wikijs"
+        namespace: "{{ namespace }}"
+      spec:
+        type: LoadBalancer
+        ports:
+          - name: http
+            port: 3000
+        selector:
+          app: "wikijs"
+ 
+- name: Create k8s pod for postgres
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: "{{ db }}-statefulset"
+        namespace: "{{ namespace }}"
+        labels:
+          app: "{{ db }}"
+      spec:
+        selector:
+          matchLabels:
+            app: "{{ db }}"
+        serviceName: "postgres"
+        replicas: 1
+        template:
+          metadata:
+            labels:
+              app: "{{ db }}"
+          spec:
+            containers:
+            - name: postgres
+              image: postgres:11-alpine
+              imagePullPolicy: Always
+              ports:
+              - containerPort: 5432
+                name: postgres-port
+              volumeMounts:
+              - name: app-storage
+                mountPath: /var/lib/postgresql/data/
+              env:
+              - name: PGDATA
+                value: /var/lib/postgresql/data/wiki
+              - name: POSTGRES_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-secret
+                    key: PASSWORD
+              - name: POSTGRES_DB
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-secret
+                    key: DATABASE
+              - name: POSTGRES_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-secret
+                    key: USER
+        volumeClaimTemplates:
+        - metadata:
+            name: app-storage
+          spec:
+            accessModes: [ "ReadWriteOnce" ]
+            storageClassName: "gold"
+            resources:
+              requests:
+                storage: 20Gi
+
+- name: Create k8s pod for wikijs
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ app }}-deployment"
+        namespace: "{{ namespace }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: wikijs
+        template:
+          metadata:
+            labels:
+              app: wikijs
+          spec:
+            containers:
+            - name: "{{ app }}"
+              image: "{{ image }}"
+              imagePullPolicy: Always
+              env: # Database ----
+              - name: DB_TYPE
+                value: "postgres"
+              - name: DB_HOST
+                value: "postgres"
+              - name: DB_PORT
+                value: "5432"
+              - name: HA_ACTIVE
+                value: "true"
+              - name: DB_NAME
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-secret
+                    key: DATABASE
+              - name: DB_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-secret
+                    key: USER
+              - name: DB_PASS
+                valueFrom:
+                  secretKeyRef:
+                    name: postgres-secret
+                    key: PASSWORD
+              resources:
+                requests:
+                  cpu: 300m
+
+- name: Create secret for postgres
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: postgres-secret
+        namespace: "{{ namespace }}"
+      type: Opaque
+      data:
+        ROOT: b2xh
+        DATABASE: d2lraWpz
+        USER: d2lraWpz
+        PASSWORD: b2xh
+
+- name: Create k8s hpa for wikijs deployment
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: autoscaling/v1
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: wikijs-deployment
+        namespace: wikijs
+      spec:
+        maxReplicas: 10
+        minReplicas: 1
+        scaleTargetRef:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: wikijs-deployment
+        targetCPUUtilizationPercentage: 50
+
+#- name: Install Elasticsearch crds
+#  kubernetes.core.k8s:
+#    state: present
+#    src: ./files/crds.yaml
+#
+#- name: Install Elasticsearch Operator
+#  kubernetes.core.k8s:
+#    state: present
+#    src: ./files/operator.yaml
+#
+#- name: Deploy Elasticsearch Cluster
+#  kubernetes.core.k8s:
+#    state: present
+#    definition:
+#      apiVersion: elasticsearch.k8s.elastic.co/v1
+#      kind: Elasticsearch
+#      metadata:
+#        name: quickstart
+#        namespace: "{{ namespace }}"
+#      spec:
+#        version: 7.16.2
+#        nodeSets:
+#        - name: default
+#          count: 1
+#          config:
+#            node.store.allow_mmap: false
+#
+#- name: Deploy Kibana instance
+#  kubernetes.core.k8s:
+#    state: present
+#    definition:
+#      apiVersion: kibana.k8s.elastic.co/v1
+#      kind: Kibana
+#      metadata:
+#        name: quickstart
+#        namespace: "{{ namespace }}"
+#      spec:
+#        version: 7.16.2
+#        count: 1
+#        elasticsearchRef:
+#          name: quickstart
+#        http:
+#          service:
+#            spec:
+#              type: LoadBalancer
+#
+#- name: Deploy metricbeats
+#  kubernetes.core.k8s:
+#    state: present
+#    src: ./files/metricbeats.yaml

@@ -1,0 +1,49 @@
+- hosts: localhost
+  become: yes
+  tasks:
+   - name: install pip3
+     command: "apt-get -y install python3-pip"
+     
+   - name: install google-auth
+     command: "pip install google-auth"
+
+   - name: install kubernetes library
+     command: "pip install kubernetes"
+
+   - name: Installing Prerequisites for Kubernetes
+     apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg-agent
+          - vim
+          - software-properties-common
+        state: present
+
+   - name: install and configure dependencies
+     shell: |
+             sudo apt-get update && sudo apt-get install -y apt-transport-https curl
+             curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+   
+   - name: Create kubernetes repo file
+     file:
+       path: "/etc/apt/sources.list.d/kubernetes.list"
+       state: "touch"
+
+   - name: Add K8s Source
+     blockinfile:
+       path: "/etc/apt/sources.list.d/kubernetes.list"
+       block: |
+             deb https://apt.kubernetes.io/ kubernetes-xenial main
+
+   - name: install kubernetes
+     shell: |
+             sudo apt-get update
+             sudo apt-get install -y kubelet=1.20.1-00 kubeadm=1.20.1-00 kubectl=1.20.1-00
+             sudo apt-mark hold kubelet kubeadm kubectl
+
+   - name: install ansible packages
+     shell: |
+             ansible-galaxy collection install kubernetes.core
+             ansible-galaxy collection install cloud.common

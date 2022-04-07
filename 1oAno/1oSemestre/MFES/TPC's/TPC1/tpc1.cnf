@@ -1,0 +1,16 @@
+c MINISAT
+c (1) B -> sócio com bigode
+c (2) C -> sócio casado
+c (3) R -> sócio de Ribeirão
+c (4) A -> camisola amarela 
+c (5) D -> ir a jogos ao Domingo
+
+
+p cnf 5 7
+-1 2 0
+3 4 0
+-2 -5 0
+-5 3 0
+-3 5 0
+1 -4 0
+-3 1 0

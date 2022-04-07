@@ -1,0 +1,15 @@
+all:
+  vars:
+    zone: europe-west1-b
+    region: europe-west1
+    project_id: ascn-331508
+    credentials_file: ./ascn-credentials.json
+    gcloud_service_account:  940178739487-compute@developer.gserviceaccount.com 
+
+    # use the section below to enter k8s cluster related information
+    cluster_name: clusterwikijs
+    initial_node_count: 3
+    disk_size_gb: 20
+    disk_type: pd-ssd
+    machine_type: e2-medium
+    namespace: wikijs

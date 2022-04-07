@@ -1,0 +1,28 @@
+apiVersion: v1
+data:
+  pg-init.sh: "#!/bin/bash\n\nPGDATA=/var/lib/postgresql/data/pgdata\nPODINFO_LABELS_FILE=/etc/podinfo/labels\n\nif
+    [ ! -d $PGDATA ] \nthen\n  echo \"The postgresql data directory $PGDATA does not
+    exist.\"\n\n  if [ ! -e $PODINFO_LABELS_FILE ]\n  then\n    echo \"  The podinfo
+    file $PODINFO_LABELS_FILE does not exist. Did you create a downward API volume?
+    For more details see: https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-i
+nformation/\"\n
+    \   echo \"  Exitting with a failure.\"\n    exit 1\n  fi\n\n  # /etc/podinfo/labels
+    only exists if the Kubernetes Downward API is mounted as volume.\n  # For more
+    details see: https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-informatio
+n/\n\n
+    \ cat $PODINFO_LABELS_FILE\n\n  if grep -q 'statefulset.kubernetes.io/pod-name=\"postgresql-sfs-0\"'
+    $PODINFO_LABELS_FILE\n  then\n    echo \"  Identified this Pod to be the static
+    primary: postgresql-sfs-0.\"\n    echo \"  Executing initdb...\"\n    initdb --username
+    postgres --pwfile <(echo $POSTGRES_PASSWORD)\n    if [ $? -ne 0 ] \n    then\n
+    \     echo \"  Failed to execute initdb.\"\n      exit 1\n    fi\n  else\n    echo
+    \"  Identified this Pod to a secondary.\"\n    echo \"  Executing pg_basebackup...\"\n
+    \   /usr/lib/postgresql/12/bin/pg_basebackup -h postgresql-primary.wikijs.svc.cluster.local
+    -U replicator -p 5432 -D $PGDATA -Fp -Xs -R\n    if [ $? -ne 0 ] \n    then\n
+    \     echo \"  Failed to execute pg_basebackup.\"\n      exit 1\n    fi\n  fi\n
+    \ echo \"  Done.\"  \nelse\n  echo \"Found the postgresql data directory at $PGDATA.\"\nfi\n\necho
+    \"Starting PostgreSQL...\"\n/usr/lib/postgresql/12/bin/postgres -c config_file=/etc/postgresql/postgresql.conf
+    -D $PGDATA\n"
+kind: ConfigMap
+metadata:
+  name: postgresql-utils
+  namespace: wikijs

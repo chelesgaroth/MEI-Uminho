@@ -1,0 +1,10 @@
+- hosts: localhost
+  tasks:
+    - name: Run command to install dependencies
+      command: "ansible-playbook install-dependencies.yml"
+
+    - name: Run command to create cluster
+      command: "ansible-playbook playbook.yml -i inventory/gcp.yml"
+
+    - name: Run command to deploy app
+      command: "ansible-playbook deploy-wikijs.yml -i inventory/gcp.yml"
