@@ -12,5 +12,5 @@
 
 ### 2º Semestre
 
--[Perfil de Engenharia de Aplicações]()
--[Perfil de Sistemas Inteligentes]()
+- [Perfil de Engenharia de Aplicações]()
+- [Perfil de Sistemas Inteligentes]()
